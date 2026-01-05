@@ -8,11 +8,13 @@ When a pull request is merged into your default branch (e.g., `main` or `master`
 
 ### Branch Name Conventions
 
-- `fix/*`, `hotfix/*`, `bugfix/*` or others: Triggers a **patch** increment (e.g., v1.0.0 -> v1.0.1)
-- `feat/*`, `feature/*`, `release/*`: Triggers a **minor** increment (e.g., v1.0.0 -> v1.1.0)
-- `breaking/*`, `major/*`: Triggers a **major** increment (e.g., v1.0.0 -> v2.0.0)
+Supported separators: `/` or `-` (e.g., `release/v1` or `release-v1`).
 
-If the branch name does not match `feat`, `feature`, `release`, `breaking`, or `major`, it typically defaults to `patch` (or the value of `default_bump`).
+- `fix`, `hotfix`, `bugfix`: Triggers a **patch** increment.
+- `feat`, `feature`, `release`: Triggers a **minor** increment.
+- `breaking`, `major`: Triggers a **major** increment.
+
+If the branch name does not match these prefixes, it defaults to `patch` (or the value of `default_bump`).
 
 ## Usage
 

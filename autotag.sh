@@ -61,12 +61,12 @@ if [ -z "$VERSION_TYPE" ]; then
     PAT_MERGE_PATCH="Merge branch '(fix|hotfix|bugfix)/.*'"
     
     # Minor: feat, feature, release
-    PAT_FROM_MINOR="from .*/(feat|feature|release)/.*"
-    PAT_MERGE_MINOR="Merge branch '(feat|feature|release)/.*'"
+    PAT_FROM_MINOR="from .*/(feat|feature|release)[/-].*"
+    PAT_MERGE_MINOR="Merge branch '(feat|feature|release)[/-].*'"
     
     # Major: breaking (explicit only)
-    PAT_FROM_MAJOR="from .*/(breaking|major)/.*"
-    PAT_MERGE_MAJOR="Merge branch '(breaking|major)/.*'"
+    PAT_FROM_MAJOR="from .*/(breaking|major)[/-].*"
+    PAT_MERGE_MAJOR="Merge branch '(breaking|major)[/-].*'"
 
     if [[ "$LAST_MSG" =~ $PAT_FROM_MINOR ]] || [[ "$LAST_MSG" =~ $PAT_MERGE_MINOR ]]; then
       VERSION_TYPE="minor"
@@ -80,9 +80,9 @@ if [ -z "$VERSION_TYPE" ]; then
     fi
   else
     # Detect from SOURCE_BRANCH (for pull_request events)
-    if [[ "$SOURCE_BRANCH" =~ ^(feat|feature|release)/.* ]]; then
+    if [[ "$SOURCE_BRANCH" =~ ^(feat|feature|release)[/-].* ]]; then
       VERSION_TYPE="minor"
-    elif [[ "$SOURCE_BRANCH" =~ ^(breaking|major)/.* ]]; then
+    elif [[ "$SOURCE_BRANCH" =~ ^(breaking|major)[/-].* ]]; then
       VERSION_TYPE="major"
     else
       # fix, hotfix, or any other branch name -> patch (or default)
