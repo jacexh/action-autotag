@@ -36,13 +36,13 @@ jobs:
     if: github.event.pull_request.merged == true
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Auto Tag
         id: autotag
-        uses: ./ # Or your-username/action-autotag@v1
+        uses: jacexh/action-autotag@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 ```
