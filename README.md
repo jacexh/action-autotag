@@ -10,8 +10,8 @@ When a pull request is merged into your default branch (e.g., `main` or `master`
 
 Supported separators: `/` or `-` (e.g., `release/v1` or `release-v1`).
 
-- `fix`, `hotfix`, `bugfix`: Triggers a **patch** increment.
-- `feat`, `feature`, `release`: Triggers a **minor** increment.
+- `fix`, `hotfix`, `bugfix`, `feat`, `feature`: Triggers a **patch** increment.
+- `release`: Triggers a **minor** increment.
 - `breaking`, `major`: Triggers a **major** increment.
 
 If the branch name does not match these prefixes, it defaults to `patch` (or the value of `default_bump`).

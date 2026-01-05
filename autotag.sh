@@ -56,13 +56,13 @@ if [ -z "$VERSION_TYPE" ]; then
     LAST_MSG=$(git log -1 --pretty=%s)
     echo "Last commit message: $LAST_MSG"
     
-    # Patch: fix, hotfix, bugfix, or others
-    PAT_FROM_PATCH="from .*/(fix|hotfix|bugfix)/.*"
-    PAT_MERGE_PATCH="Merge branch '(fix|hotfix|bugfix)/.*'"
+    # Patch: fix, hotfix, bugfix, feat, feature or others
+    PAT_FROM_PATCH="from .*/(fix|hotfix|bugfix|feat|feature)[/-].*"
+    PAT_MERGE_PATCH="Merge branch '(fix|hotfix|bugfix|feat|feature)[/-].*'"
     
-    # Minor: feat, feature, release
-    PAT_FROM_MINOR="from .*/(feat|feature|release)[/-].*"
-    PAT_MERGE_MINOR="Merge branch '(feat|feature|release)[/-].*'"
+    # Minor: release only
+    PAT_FROM_MINOR="from .*/(release)[/-].*"
+    PAT_MERGE_MINOR="Merge branch '(release)[/-].*'"
     
     # Major: breaking (explicit only)
     PAT_FROM_MAJOR="from .*/(breaking|major)[/-].*"
@@ -80,12 +80,12 @@ if [ -z "$VERSION_TYPE" ]; then
     fi
   else
     # Detect from SOURCE_BRANCH (for pull_request events)
-    if [[ "$SOURCE_BRANCH" =~ ^(feat|feature|release)[/-].* ]]; then
+    if [[ "$SOURCE_BRANCH" =~ ^(release)[/-].* ]]; then
       VERSION_TYPE="minor"
     elif [[ "$SOURCE_BRANCH" =~ ^(breaking|major)[/-].* ]]; then
       VERSION_TYPE="major"
     else
-      # fix, hotfix, or any other branch name -> patch (or default)
+      # fix, hotfix, feat, feature or any other branch name -> patch (or default)
       VERSION_TYPE="patch"
     fi
   fi
