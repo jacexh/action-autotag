@@ -106,11 +106,11 @@ echo "Bump type: $VERSION_TYPE"
 VERSION_NEXT=""
 
 if [ "$VERSION_TYPE" = "patch" ]; then
-  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$3++; print $1"."$2"."$3}')"
+  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{printf "%d.%d.%d", $1, $2, $3+1}')"
 elif [ "$VERSION_TYPE" = "minor" ]; then
-  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$2++; $3=0; print $1"."$2"."$3}')"
+  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{printf "%d.%d.%d", $1, $2+1, 0}')"
 elif [ "$VERSION_TYPE" = "major" ]; then
-  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$1++; $2=0; $3=0; print $1"."$2"."$3}')"
+  VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{printf "%d.%d.%d", $1+1, 0, 0}')"
 elif [ "$VERSION_TYPE" = "none" ]; then
   echo "Bump type is 'none'. Skipping tag creation."
   exit 0
