@@ -4,70 +4,140 @@
 set -euo pipefail
 
 # ==================================
-# Verify repo is clean
+# Git Configuration
 # ==================================
 
-# List uncommitted changes and
-# check if the output is not empty
-if [ -n "$(git status --porcelain)" ]; then
-  # Print error message
-  printf "\nError: repo has uncommitted changes\n\n"
-  # Exit with error code
-  exit 1
+git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+if [ -z "$(git config user.name)" ]; then
+  git config user.name "${GITHUB_ACTOR:-github-actions}"
+  git config user.email "${GITHUB_ACTOR:-github-actions}@users.noreply.github.com"
 fi
 
 # ==================================
 # Get latest version from git tags
 # ==================================
 
-# List git tags sorted lexicographically
-# so version numbers sorted correctly
+git fetch --tags --force || true
 GIT_TAGS=$(git tag --sort=version:refname)
-
-# Get last line of output which returns the
-# last tag (most recent version)
 GIT_TAG_LATEST=$(echo "$GIT_TAGS" | tail -n 1)
 
-# If no tag found, default to v0.0.0
 if [ -z "$GIT_TAG_LATEST" ]; then
   GIT_TAG_LATEST="v0.0.0"
 fi
 
-# Strip prefix 'v' from the tag to easily increment
+OLD_TAG_NAME="$GIT_TAG_LATEST"
 GIT_TAG_LATEST=$(echo "$GIT_TAG_LATEST" | sed 's/^v//')
+
+echo "Current version: v$GIT_TAG_LATEST"
+
+# ==================================
+# Determine Version Increment Type
+# ==================================
+
+VERSION_TYPE="${1-}"
+
+if [ -z "$VERSION_TYPE" ]; then
+  SOURCE_BRANCH=""
+  
+  # 1. Try to get branch from Pull Request event
+  if [ "${GITHUB_EVENT_NAME-}" = "pull_request" ] && [ -f "${GITHUB_EVENT_PATH-}" ]; then
+    IS_MERGED=$(jq -r '.pull_request.merged' "$GITHUB_EVENT_PATH")
+    if [ "$IS_MERGED" != "true" ]; then
+      echo "Pull request closed without merge. Skipping tag."
+      exit 0
+    fi
+    SOURCE_BRANCH="$GITHUB_HEAD_REF"
+    echo "Detected branch from Pull Request: $SOURCE_BRANCH"
+  fi
+
+  # 2. Try to detect from the last commit message if branch not found
+  if [ -z "$SOURCE_BRANCH" ]; then
+    LAST_MSG=$(git log -1 --pretty=%s)
+    echo "Last commit message: $LAST_MSG"
+    
+    # Patch: fix, hotfix, bugfix, or others
+    PAT_FROM_PATCH="from .*/(fix|hotfix|bugfix)/.*"
+    PAT_MERGE_PATCH="Merge branch '(fix|hotfix|bugfix)/.*'"
+    
+    # Minor: feat, feature, release
+    PAT_FROM_MINOR="from .*/(feat|feature|release)/.*"
+    PAT_MERGE_MINOR="Merge branch '(feat|feature|release)/.*'"
+    
+    # Major: breaking (explicit only)
+    PAT_FROM_MAJOR="from .*/(breaking|major)/.*"
+    PAT_MERGE_MAJOR="Merge branch '(breaking|major)/.*'"
+
+    if [[ "$LAST_MSG" =~ $PAT_FROM_MINOR ]] || [[ "$LAST_MSG" =~ $PAT_MERGE_MINOR ]]; then
+      VERSION_TYPE="minor"
+    elif [[ "$LAST_MSG" =~ $PAT_FROM_MAJOR ]] || [[ "$LAST_MSG" =~ $PAT_MERGE_MAJOR ]]; then
+      VERSION_TYPE="major"
+    elif [[ "$LAST_MSG" =~ $PAT_FROM_PATCH ]] || [[ "$LAST_MSG" =~ $PAT_MERGE_PATCH ]]; then
+      VERSION_TYPE="patch"
+    else
+      # Default behavior for unknown branch types (often just 'patch')
+       VERSION_TYPE="${INPUT_DEFAULT_BUMP:-patch}"
+    fi
+  else
+    # Detect from SOURCE_BRANCH (for pull_request events)
+    if [[ "$SOURCE_BRANCH" =~ ^(feat|feature|release)/.* ]]; then
+      VERSION_TYPE="minor"
+    elif [[ "$SOURCE_BRANCH" =~ ^(breaking|major)/.* ]]; then
+      VERSION_TYPE="major"
+    else
+      # fix, hotfix, or any other branch name -> patch (or default)
+      VERSION_TYPE="patch"
+    fi
+  fi
+
+  # 3. Final Fallback/Safety Check (though logic above covers most)
+  if [ -z "$VERSION_TYPE" ]; then
+    VERSION_TYPE="${INPUT_DEFAULT_BUMP:-patch}"
+    echo "Branch type not detected. Defaulting to: $VERSION_TYPE"
+  fi
+fi
+
+echo "Bump type: $VERSION_TYPE"
 
 # ==================================
 # Increment version number
 # ==================================
 
-# Get version type from first argument passed to script
-VERSION_TYPE="${1-}"
 VERSION_NEXT=""
 
 if [ "$VERSION_TYPE" = "patch" ]; then
-  # Increment patch version
   VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$3++; print $1"."$2"."$3}')"
 elif [ "$VERSION_TYPE" = "minor" ]; then
-  # Increment minor version
   VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$2++; $3=0; print $1"."$2"."$3}')"
 elif [ "$VERSION_TYPE" = "major" ]; then
-  # Increment major version
   VERSION_NEXT="$(echo "$GIT_TAG_LATEST" | awk -F. '{$1++; $2=0; $3=0; print $1"."$2"."$3}')"
+elif [ "$VERSION_TYPE" = "none" ]; then
+  echo "Bump type is 'none'. Skipping tag creation."
+  exit 0
 else
-  # Print error for unknown versioning type
-  printf "\nError: invalid VERSION_TYPE arg passed, must be 'patch', 'minor' or 'major'\n\n"
-  # Exit with error code
+  printf "\nError: invalid VERSION_TYPE '$VERSION_TYPE'\n\n"
   exit 1
 fi
 
-
 # ==================================
-# Create git tag for new version
+# Create and Push Git Tag
 # ==================================
 
-# Create an annotated tag
-echo "next version: v$VERSION_NEXT"
-git tag -a "v$VERSION_NEXT" -m "Release: v$VERSION_NEXT"
+TAG_NAME="v$VERSION_NEXT"
+echo "Next version: $TAG_NAME"
 
-# Optional: push commits and tag to remote 'main' branch
-# git push origin main --follow-tags
+# Output to GitHub Actions
+if [ -n "${GITHUB_OUTPUT-}" ]; then
+  echo "old_tag=$OLD_TAG_NAME" >> "$GITHUB_OUTPUT"
+  echo "new_tag=$TAG_NAME" >> "$GITHUB_OUTPUT"
+fi
+
+git tag -a "$TAG_NAME" -m "Release: $TAG_NAME"
+
+if [ -n "${INPUT_GITHUB_TOKEN-}" ]; then
+    git remote set-url origin "https://x-access-token:${INPUT_GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+    echo "Pushing tag $TAG_NAME to origin..."
+    git push origin "$TAG_NAME"
+else
+    echo "INPUT_GITHUB_TOKEN not set. Skipping push."
+fi

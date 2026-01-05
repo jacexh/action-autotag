@@ -1,0 +1,18 @@
+name: 'Auto Tag Action'
+description: 'Automatically tags the repository based on the merged branch name.'
+inputs:
+  github_token:
+    description: 'GitHub Token for pushing tags'
+    required: true
+  default_bump:
+    description: 'Default bump type if branch name does not match (patch, minor, major, none)'
+    required: false
+    default: 'patch'
+outputs:
+  new_tag:
+    description: 'The newly created tag (e.g., v1.0.1)'
+  old_tag:
+    description: 'The previous tag before incrementing (e.g., v1.0.0)'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
